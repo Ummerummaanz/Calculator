@@ -1,0 +1,89 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>Calculator</title><meta name="description" content="Simple calculator PWA (add, subtract, multiply, divide)" /><link rel="manifest" href="/manifest.json"><meta name="theme-color" content="#0f172a" /><style>
+    :root{
+        --bg:#f3f4f6; --panel:#ffffff; --accent:#4f46e5; --dark:#111827; --muted:#6b7280; --btn:#f8fafc; --operator:#f1f5f9;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+        margin:0; background:linear-gradient(180deg,var(--bg),#ffffff);
+        color:var(--dark); display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .wrap{width:100%; max-width:420px}
+    .title{margin:0 0 12px; text-align:center; font-size:1.25rem; color:var(--muted)}
+    .calculator{background:var(--panel); border-radius:12px; box-shadow:0 8px 30px rgba(15,23,42,0.08); padding:18px}
+    .display{background:#0f172a; color:#f8fafc; font-size:1.8rem; text-align:right; padding:14px; border-radius:8px;
+        min-height:56px; display:flex; align-items:center; justify-content:space-between; word-wrap:break-word; overflow-x:auto;}
+    .hint{ text-align:center; margin:10px 0 0; color:var(--muted); font-size:0.875rem; }
+    .buttons{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:14px; }
+    .btn{ background:var(--btn); border:0; border-radius:8px; padding:14px 12px; font-size:1.05rem; cursor:pointer;
+        box-shadow:inset 0 -2px 0 rgba(0,0,0,0.03); transition:transform .05s ease, box-shadow .05s ease; }
+    .btn:active{transform:translateY(1px)}
+    .btn-accent{ background:linear-gradient(180deg,var(--accent),#4338ca); color:#fff; font-weight:600; }
+    .btn-operator{ background:var(--operator); font-weight:600; }
+    .btn-equal{ background:var(--accent); color:#fff; font-weight:700; }
+    @media (max-width:420px){ .display{font-size:1.4rem; min-height:48px} .btn{padding:12px 8px; font-size:1rem} }
+</style></head><body><main class="wrap"><h1 class="title">Calculator</h1><div class="calculator" role="application" aria-label="Simple calculator"><div class="display" id="display" aria-live="polite">0</div><div class="buttons" role="group" aria-label="Calculator buttons"><button class="btn btn-accent" data-action="clear" aria-label="Clear">C</button><button class="btn" data-action="delete" aria-label="Delete">⌫</button><button class="btn" data-value="(" aria-label="Open parenthesis">(</button><button class="btn" data-value=")" aria-label="Close parenthesis">)</button><button class="btn" data-value="7">7</button><button class="btn" data-value="8">8</button><button class="btn" data-value="9">9</button><button class="btn btn-operator" data-value="/" aria-label="Divide">÷</button><button class="btn" data-value="4">4</button><button class="btn" data-value="5">5</button><button class="btn" data-value="6">6</button><button class="btn btn-operator" data-value="*" aria-label="Multiply">×</button><button class="btn" data-value="1">1</button><button class="btn" data-value="2">2</button><button class="btn" data-value="3">3</button><button class="btn btn-operator" data-value="-" aria-label="Subtract">−</button><button class="btn" data-value="0">0</button><button class="btn" data-value=".">.</button><button class="btn btn-equal" data-action="calculate" aria-label="Equals">=</button><button class="btn btn-operator" data-value="+" aria-label="Add">+</button></div></div><p class="hint">Keyboard: numbers, + - * /, Enter =, Backspace, Escape</p></main><script>
+    (function () {
+        const displayEl = document.getElementById('display');
+        const buttons = document.querySelectorAll('.btn');
+        let expression = '';
+        function updateDisplay(text) { displayEl.textContent = text === '' ? '0' : text; }
+        function appendValue(val) {
+            const lastChar = expression.slice(-1);
+            if (isOperator(val)) {
+                if (expression === '' && val !== '(') return;
+                if (isOperator(lastChar) && lastChar !== ')' && val !== '(') {
+                    expression = expression.slice(0, -1) + val; updateDisplay(expression); return;
+                }
+            }
+            if (val === '.') {
+                const lastNumber = getLastNumber(expression);
+                if (lastNumber.includes('.')) return;
+                if (lastNumber === '' && (expression === '' || /[+*-\\/(]$/.test(expression))) val = '0.';
+            }
+            expression += val; updateDisplay(expression);
+        }
+        function isOperator(ch) { return ['+','-','*','/','×','÷'].includes(ch); }
+        function getLastNumber(expr) { const tokens = expr.split(/[+*-\\/()]/); return tokens[tokens.length - 1] || ''; }
+        function clearAll() { expression = ''; updateDisplay(expression); }
+        function deleteLast() { expression = expression.slice(0, -1); updateDisplay(expression); }
+        function calculate() {
+            if (!expression) return;
+            let expr = expression.replace(/×/g,'*').replace(/÷/g,'/');
+            if (!/^[0-9+*-\\/().\\s]+$/.test(expr)) { updateDisplay('Error'); expression = ''; return; }
+            if (/[+*-\\/.]$/.test(expr)) { updateDisplay('Error'); expression = ''; return; }
+            try {
+                const result = Function('"use strict"; return (' + expr + ')')();
+                const out = Number.isFinite(result) ? (Number.isInteger(result) ? result.toString() : Number(result.toFixed(10)).toString()) : 'Error';
+                updateDisplay(out);
+                expression = out === 'Error' ? '' : out.toString();
+            } catch (e) { updateDisplay('Error'); expression = ''; }
+        }
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const val = btn.getAttribute('data-value');
+                const action = btn.getAttribute('data-action');
+                if (action === 'clear') { clearAll(); return; }
+                if (action === 'delete') { deleteLast(); return; }
+                if (action === 'calculate') { calculate(); return; }
+                if (val) appendValue(val);
+            });
+        });
+        window.addEventListener('keydown', (ev) => {
+            const key = ev.key;
+            if ((/^[0-9]$/).test(key)) { appendValue(key); ev.preventDefault(); return; }
+            if (key === '.' ) { appendValue('.'); ev.preventDefault(); return; }
+            if (['+','-','*','/'].includes(key)) { appendValue(key); ev.preventDefault(); return; }
+            if (key === 'Enter' || key === '=') { calculate(); ev.preventDefault(); return; }
+            if (key === 'Backspace') { deleteLast(); ev.preventDefault(); return; }
+            if (key === 'Escape') { clearAll(); ev.preventDefault(); return; }
+            if (key === '(' || key === ')') { appendValue(key); ev.preventDefault(); return; }
+        });
+        updateDisplay('0');
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(()=>{/*sw registration failed*/});
+        }
+    })();
+</script></body></html>
+
