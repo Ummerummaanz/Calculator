@@ -51,14 +51,22 @@
         function calculate() {
             if (!expression) return;
             let expr = expression.replace(/×/g,'*').replace(/÷/g,'/');
-            if (!/^[0-9+*-\\/().\\s]+$/.test(expr)) { updateDisplay('Error'); expression = ''; return; }
-            if (/[+*-\\/.]$/.test(expr)) { updateDisplay('Error'); expression = ''; return; }
+            if (!/^[0-9+\-*/().\s]+$/.test(expr)) {
+                updateDisplay('Error'); expression = ''; return;
+            }
+            if (/[+\-*/.]$/.test(expr)) {
+                updateDisplay('Error'); expression = ''; return;
+            }
             try {
                 const result = Function('"use strict"; return (' + expr + ')')();
-                const out = Number.isFinite(result) ? (Number.isInteger(result) ? result.toString() : Number(result.toFixed(10)).toString()) : 'Error';
+                const out = Number.isFinite(result)
+                    ? (Number.isInteger(result) ? result.toString() : Number(result.toFixed(10)).toString())
+                    : 'Error';
                 updateDisplay(out);
                 expression = out === 'Error' ? '' : out.toString();
-            } catch (e) { updateDisplay('Error'); expression = ''; }
+            } catch (e) {
+                updateDisplay('Error'); expression = '';
+            }
         }
         buttons.forEach(btn => {
             btn.addEventListener('click', () => {
